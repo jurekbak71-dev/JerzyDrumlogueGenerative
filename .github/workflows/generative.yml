@@ -1,0 +1,47 @@
+name: Build generative drumlogue synth
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned KORG SDK
+        run: |
+          git clone https://github.com/korginc/logue-sdk.git sdk
+          git -C sdk checkout e84899398dc1a71468a79e293fe68e3ab22e19b6
+      - name: Test autonomous playback and memory safety
+        run: |
+          g++ -std=c++14 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g -O1 -I sdk/platform/drumlogue/common -I synth tests/generative_test.cc -o generative-test
+          ./generative-test
+      - name: Compile ARM unit with official SDK build process
+        run: |
+          cp -r synth sdk/platform/drumlogue/jerzy-gen
+          cp sdk/platform/drumlogue/dummy-synth/Makefile sdk/platform/drumlogue/jerzy-gen/Makefile
+          image='xiashj/logue-sdk@sha256:e4d85a16c38dc4d34b0e93cabb6378df21729688dbcd88808c84e8d41aa0c9ba'
+          docker pull "$image"
+          docker run --rm -v "$PWD/sdk/platform:/workspace" -h logue-sdk "$image" /app/cmd_entry build drumlogue/jerzy-gen
+      - name: Verify unit header, architecture and entry points
+        run: |
+          mkdir -p dist
+          cp sdk/platform/drumlogue/jerzy-gen/jerzy_gen.drmlgunit dist/
+          python3 tests/verify_unit.py dist/jerzy_gen.drmlgunit | tee dist/VALIDATION.txt
+          readelf -h dist/jerzy_gen.drmlgunit > dist/ELF.txt
+          readelf --dyn-syms -W dist/jerzy_gen.drmlgunit > dist/SYMBOLS.txt
+          for symbol in unit_init unit_render unit_header unit_note_on unit_note_off unit_set_param_value unit_set_tempo; do
+            grep -Eq "GLOBAL +DEFAULT +[0-9]+ +$symbol$" dist/SYMBOLS.txt
+          done
+          cp README.md dist/README_PL.md
+          cp sdk/LICENSE dist/LICENSE_KORG.txt
+          cd dist
+          sha256sum jerzy_gen.drmlgunit > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JerzyGen-drumlogue
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90

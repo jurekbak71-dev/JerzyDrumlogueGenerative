@@ -1,0 +1,10 @@
+PROJECT := jerzy_gen
+PROJECT_TYPE := synth
+CSRC = header.c
+CXXSRC = unit.cc
+ASMSRC =
+ASMXSRC =
+UINCDIR =
+ULIBDIR =
+ULIBS = -lm -lc
+UDEFS =

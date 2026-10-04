@@ -22,7 +22,7 @@ class Synth {
   }
   void Reset() {
     for(auto& v:voices_)v=Voice{};
-    std::memset(delay_,0,sizeof(delay_));write_=0;step_=0;nextVoice_=0;timer_=0;
+    write_=0;filled_=0;step_=0;nextVoice_=0;timer_=0;
     master_=0;playing_=false;seed_=-1;
     restart_.store(false);halt_.store(false);bend_.store(8192);
   }
@@ -104,9 +104,9 @@ class Synth {
         v.phase=wrap(v.phase+inc);v.other=wrap(v.other+inc*detune);v.modphase=wrap(v.modphase+inc*2);
       }
       const unsigned read=(write_+Delay-delayFrames)%Delay;
-      const float dl=delay_[0][read],dr=delay_[1][read];
+      const float dl=filled_>=delayFrames?delay_[0][read]:0.f,dr=filled_>=delayFrames?delay_[1][read]:0.f;
       delay_[0][write_]=mix[0]+dr*feedback;delay_[1][write_]=mix[1]+dl*feedback;
-      write_=(write_+1)%Delay;
+      write_=(write_+1)%Delay;if(filled_<Delay)++filled_;
       for(unsigned c=0;c<2;++c){const float x=(mix[c]+(c?dr:dl)*wet)*level*master_;out[2*f+c]=x/(1.f+std::fabs(x));}
     }
   }
@@ -118,7 +118,7 @@ class Synth {
   std::atomic<bool> restart_{false},halt_{false};
   Voice voices_[4]{};
   float sine_[Table]{},delay_[2][Delay]{},master_=0;
-  unsigned write_=0,step_=0,nextVoice_=0;
+  unsigned write_=0,filled_=0,step_=0,nextVoice_=0;
   uint8_t motif_[16]{};
   uint32_t rng_=1;int32_t seed_=-1;
   double timer_=0;bool playing_=false;

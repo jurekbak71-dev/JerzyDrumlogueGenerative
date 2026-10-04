@@ -4,7 +4,7 @@
 const __unit_header unit_header_t unit_header={
  .header_size=sizeof(unit_header_t),.target=UNIT_TARGET_PLATFORM|k_unit_module_synth,
  .api=UNIT_API_VERSION,.dev_id=0x4A424B31U,.unit_id=0x47454E31U,
- .version=0x00010000U,.name="JerzyGen",.num_presets=0,.num_params=20,
+ .version=0x00010001U,.name="JerzyGen",.num_presets=0,.num_params=20,
  .params={
  P(0,1,1,k_unit_param_type_onoff,"RUN"),
  P(0,1,0,k_unit_param_type_strings,"CLOCK"),

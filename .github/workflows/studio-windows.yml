@@ -44,7 +44,9 @@ jobs:
         working-directory: DrumlogueStudio
         run: |
           python -m pytest -q -k "not test_host"
+          if ($LASTEXITCODE -ne 0) { throw "Python tests failed" }
           python run.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw "Source smoke test failed" }
       - name: Build standalone Windows exe
         working-directory: DrumlogueStudio
         shell: pwsh

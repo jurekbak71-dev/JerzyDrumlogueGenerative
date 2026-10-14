@@ -1,0 +1,68 @@
+name: Build Jerzy Drumlogue Studio Windows EXE
+on:
+  push:
+    branches: [studio-windows-v0.2.0]
+    paths:
+      - studio_payload.b64
+      - .github/workflows/studio-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout dedicated build branch
+        uses: actions/checkout@v4
+      - name: Install Python 3.12 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+          cache: pip
+          cache-dependency-path: studio_payload.b64
+      - name: Unpack Studio sources
+        shell: pwsh
+        run: |
+          @'
+          import base64, io, lzma, pathlib, tarfile
+          blob = base64.b64decode(pathlib.Path('studio_payload.b64').read_text(encoding='ascii'), validate=True)
+          data = lzma.decompress(blob)
+          with tarfile.open(fileobj=io.BytesIO(data), mode='r:') as archive:
+              archive.extractall('DrumlogueStudio', filter='data')
+              print('Extracted', len(archive.getmembers()), 'source files')
+          '@ | python -
+      - name: Install application and build dependencies
+        working-directory: DrumlogueStudio
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest pyinstaller
+      - name: Run source tests and import smoke test
+        working-directory: DrumlogueStudio
+        run: |
+          python -m pytest -q -k "not test_host"
+          python run.py --self-test
+      - name: Build standalone Windows exe
+        working-directory: DrumlogueStudio
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name JerzyDrumlogueStudio --collect-all soundfile --collect-all scipy --collect-all mido --collect-all rtmidi --add-data "demo;demo" --add-data "studio/hostbridge.cc;studio" --add-data "studio/sdk_compat;studio/sdk_compat" --add-data "studio/LICENSE_KORG_BSD.txt;studio" run.py
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+      - name: Verify packaged application imports
+        working-directory: DrumlogueStudio
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "dist/JerzyDrumlogueStudio.exe").Path
+          $process = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru -NoNewWindow
+          if ($process.ExitCode -ne 0) { throw "EXE smoke test failed: $($process.ExitCode)" }
+          Get-Item $exe | Select-Object Name,Length
+      - name: Upload Windows x64 exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: JerzyDrumlogueStudio-v0.2.0-Windows-x64
+          path: DrumlogueStudio/dist/JerzyDrumlogueStudio.exe
+          if-no-files-found: error
+          retention-days: 30

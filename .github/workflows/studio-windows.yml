@@ -47,11 +47,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Python tests failed" }
           python run.py --self-test
           if ($LASTEXITCODE -ne 0) { throw "Source smoke test failed" }
+          python run.py --midi-self-test
+          if ($LASTEXITCODE -ne 0) { throw "RtMidi backend failed on Windows" }
       - name: Build standalone Windows exe
         working-directory: DrumlogueStudio
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name JerzyDrumlogueStudio --collect-all soundfile --collect-all scipy --collect-all mido --collect-all rtmidi --add-data "demo;demo" --add-data "studio/hostbridge.cc;studio" --add-data "studio/sdk_compat;studio/sdk_compat" --add-data "studio/LICENSE_KORG_BSD.txt;studio" run.py
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name JerzyDrumlogueStudio --collect-all soundfile --collect-all scipy --collect-all mido --collect-all rtmidi --hidden-import=mido.backends.rtmidi --add-data "demo;demo" --add-data "studio/hostbridge.cc;studio" --add-data "studio/sdk_compat;studio/sdk_compat" --add-data "studio/LICENSE_KORG_BSD.txt;studio" run.py
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
       - name: Verify packaged application imports
         working-directory: DrumlogueStudio
@@ -60,11 +62,13 @@ jobs:
           $exe = (Resolve-Path "dist/JerzyDrumlogueStudio.exe").Path
           $process = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru -NoNewWindow
           if ($process.ExitCode -ne 0) { throw "EXE smoke test failed: $($process.ExitCode)" }
+          $midi = Start-Process -FilePath $exe -ArgumentList "--midi-self-test" -Wait -PassThru -NoNewWindow
+          if ($midi.ExitCode -ne 0) { throw "Frozen EXE MIDI backend failed: $($midi.ExitCode)" }
           Get-Item $exe | Select-Object Name,Length
       - name: Upload Windows x64 exe
         uses: actions/upload-artifact@v4
         with:
-          name: JerzyDrumlogueStudio-v0.2.0-Windows-x64
+          name: JerzyDrumlogueStudio-v0.2.2-USB-MIDI-Windows-x64
           path: DrumlogueStudio/dist/JerzyDrumlogueStudio.exe
           if-no-files-found: error
           retention-days: 30

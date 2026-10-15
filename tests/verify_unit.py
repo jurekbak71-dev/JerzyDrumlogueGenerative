@@ -21,6 +21,6 @@ presets, params = struct.unpack_from('<II', u, 36)
 assert size == 596 and len(u) == 596, 'Header layout does not match drumlogue SDK'
 assert target == 0x405 and api == 0x20000, 'Wrong platform, module, or API'
 assert name == 'JerzyGen' and dev == 0x4A424B31 and uid == 0x47454E31
-assert params == 20 and presets == 0 and version == 0x10000
+assert params == 20 and presets == 0 and version == 0x10002
 print(f'Validated {name}: ARM hard-float, drumlogue synth API 2.0, {params} parameters, {len(data)} bytes')
 print('SHA256:', hashlib.sha256(data).hexdigest())

@@ -29,7 +29,7 @@ jobs:
         run: |
           @'
           import base64, io, lzma, pathlib, tarfile
-          blob = base64.b64decode(pathlib.Path('studio_payload.b64').read_text(encoding='ascii'), validate=True)
+          blob = base64.b64decode(''.join(pathlib.Path('studio_payload.b64').read_text(encoding='ascii').split()), validate=True)
           data = lzma.decompress(blob)
           with tarfile.open(fileobj=io.BytesIO(data), mode='r:') as archive:
               archive.extractall('DrumlogueStudio', filter='data')

@@ -1,4 +1,11 @@
-# JerzyGen 1.0 — samogeneratywny syntezator dla KORG drumlogue
+# JerzyGen 1.0.2 — samogeneratywny syntezator dla KORG drumlogue
+
+W 1.0.2 MUTATION zmienia nuty o małe kroki skali (random walk z odbiciem
+na granicach), zamiast skakać losowo po całym zakresie. Przy czterech
+zajętych głosach preferowany jest najcichszy do zastąpienia.
+Feedback echo otrzymał łagodną saturację i ochronę przed denormalami.
+Nazwy i indeksy 20 parametrów nie zostały zmienione.
+
 
 Instrument USER ENGINE sam tworzy dźwięki i rozwijający się motyw muzyczny.
 Nie wymaga sampli, klawiatury MIDI ani nut w sekwencerze drumlogue.
@@ -45,7 +52,7 @@ pojawia się bez konieczności uruchamiania sekwencera.
 
 Generator tworzy 16 nut motywu przez losowy spacer w wybranej skali.
 Każdy krok może zagrać nutę albo pauzę zgodnie z DENSITY.
-MUTATION stopniowo podmienia nuty motywu na nowe nuty tej samej skali.
+MUTATION stopniowo podmienia nuty motywu o małe interwały tej samej skali, z odbiciem na krańcach zakresu.
 Losowane są także dynamika i panorama. Cztery głosy pozwalają dźwiękom
 nakładać się; przy większej liczbie nakładających się nut najstarszy głos
 jest zastępowany. Przy MUTATION = 0 układ wysokości pozostaje stały,

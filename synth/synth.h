@@ -82,7 +82,16 @@ class Synth {
     for(size_t f=0;f<frames;++f){
       if(run){
         if(timer_<=0){
-          if(random()%100<unsigned(q[Mutation]))motif_[step_]=uint8_t(random()%unsigned(degrees(q[Scale])*q[Octaves]));
+          if(random()%100<unsigned(q[Mutation])) {
+            // Local, bounded melodic change instead of random octave jumps.
+            const int n=degrees(q[Scale])*q[Octaves];
+            const int delta=int(random()%5)-2;
+            int candidate=int(motif_[step_])+delta;
+            // Reflect at phrase boundaries rather than sticking to the extremes.
+            if(candidate<0)candidate=-candidate;
+            if(candidate>=n)candidate=2*(n-1)-candidate;
+            motif_[step_]=uint8_t(clamp(candidate,0,n-1));
+          }
           if(random()%100<unsigned(q[Density]))trigger(q,motif_[step_]);
           step_=(step_+1)%16;timer_+=interval;
         }
@@ -105,7 +114,12 @@ class Synth {
       }
       const unsigned read=(write_+Delay-delayFrames)%Delay;
       const float dl=filled_>=delayFrames?delay_[0][read]:0.f,dr=filled_>=delayFrames?delay_[1][read]:0.f;
-      delay_[0][write_]=mix[0]+dr*feedback;delay_[1][write_]=mix[1]+dl*feedback;
+      // Stabilized feedback: saturate only the recirculating signal and clear denormals.
+      const float fl=dr*feedback,fr=dl*feedback;
+      const float wl=mix[0]+fl/(1.f+std::fabs(fl));
+      const float wr=mix[1]+fr/(1.f+std::fabs(fr));
+      delay_[0][write_]=std::fabs(wl)<1.e-19f?0.f:wl;
+      delay_[1][write_]=std::fabs(wr)<1.e-19f?0.f:wr;
       write_=(write_+1)%Delay;if(filled_<Delay)++filled_;
       for(unsigned c=0;c<2;++c){const float x=(mix[c]+(c?dr:dl)*wet)*level*master_;out[2*f+c]=x/(1.f+std::fabs(x));}
     }
@@ -154,7 +168,15 @@ class Synth {
   void trigger(const int32_t* q,unsigned degree){
     degree%=unsigned(degrees(q[Scale])*q[Octaves]);
     const int note=clamp(q[Root]+semitone(q[Scale],int(degree)),0,108);
-    Voice& v=voices_[nextVoice_];nextVoice_=(nextVoice_+1)%4;v=Voice{};
+    // Prefer an idle/quiet voice to avoid needlessly cutting an audible tail.
+    unsigned chosen=nextVoice_;
+    for(unsigned i=0;i<4;++i){
+      const unsigned candidate=(nextVoice_+i)&3u;
+      if(!voices_[candidate].active){chosen=candidate;break;}
+      if(voices_[candidate].env<voices_[chosen].env)chosen=candidate;
+    }
+    nextVoice_=(chosen+1)&3u;
+    Voice& v=voices_[chosen];v=Voice{};
     v.active=v.attacking=true;v.increment=440.f*std::pow(2.f,(note-69)/12.f)/48000.f;
     v.attack=1.f/(48.f*q[Attack]);v.decay=std::exp(-6.907755f/(48.f*q[Decay]));
     v.velocity=.55f+(random()%46)*.01f;
